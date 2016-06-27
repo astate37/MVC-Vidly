@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Data.Entity;
 using System.Linq;
 using System.Web.Mvc;
-using Vidly.Migrations;
 using Vidly.Models;
 using Vidly.ViewModels;
 
@@ -21,55 +20,9 @@ namespace Vidly.Controllers
         protected override void Dispose(bool disposing)
         {
             _context.Dispose();
+
+            base.Dispose(disposing);
         }
-
-        public ViewResult Index()
-        {
-            var movies = _context.Movies.Include(m => m.Genre).ToList();
-
-            return View(movies);    
-        }
-
-        public ViewResult New()
-        {
-            var genres = _context.Genres.ToList();
-
-            var viewModel = new MovieFormViewModel
-            {
-                Genres = genres
-            };
-
-            return View("MovieForm", viewModel);
-        }
-
-        public ActionResult Edit(int id)
-        {
-            var movie = _context.Movies.SingleOrDefault(c => c.Id == id);
-
-            if (movie == null)
-                return HttpNotFound();
-
-            var viewModel = new MovieFormViewModel
-            {
-                Movie = movie,
-                Genres = _context.Genres.ToList()
-            };
-
-            return View("MovieForm", viewModel);
-        }
-
-
-        public ActionResult Details(int id)
-        {
-            var movie = _context.Movies.Include(m => m.Genre).SingleOrDefault(m => m.Id == id);
-
-            if (movie == null)
-                return HttpNotFound();
-
-            return View(movie);
-
-        }
-
 
         // GET: Movies/Random
         public ActionResult Random()
@@ -77,17 +30,48 @@ namespace Vidly.Controllers
             var movie = new Movie() { Name = "Shrek!" };
             var customers = new List<Customer>
             {
-                new Customer { Name = "Customer 1" },
-                new Customer { Name = "Customer 2" }
+                new Customer {Name = "Customer 1"},
+                new Customer {Name = "Customer 2"}
             };
 
             var viewModel = new RandomMovieViewModel
             {
+                Movie = _context.Movies.SingleOrDefault(),
+                Customers = _context.Customers.ToList()
+            };
+            return View(viewModel);
+        }
+
+        [Route("movies/released/{year:regex(\\d{4}):range(2015,2016)}/{month:regex(\\d{2}):range(1,12)}")]
+        public ActionResult ByReleaseDate(int year, int month)
+        {
+            return Content(year + "/" + month);
+        }
+
+        public ActionResult New()
+        {
+            var viewModel = new MovieFormViewModel()
+            {
+                Movie = new Movie(),
+                Genres = _context.Genres.ToList()
+            };
+            return View("MovieForm", viewModel);
+        }
+
+        public ActionResult Edit(int id)
+        {
+            var movie = _context.Movies.SingleOrDefault(m => m.Id == id);
+
+            if (movie == null)
+                return HttpNotFound();
+
+            var viewModel = new MovieFormViewModel()
+            {
                 Movie = movie,
-                Customers = customers
+                Genres = _context.Genres.ToList()
             };
 
-            return View(viewModel);
+            return View("MovieForm", viewModel);
         }
 
         [HttpPost]
@@ -101,15 +85,35 @@ namespace Vidly.Controllers
             else
             {
                 var movieInDb = _context.Movies.Single(m => m.Id == movie.Id);
+
                 movieInDb.Name = movie.Name;
+                movieInDb.ReleaseDate = movie.ReleaseDate;
                 movieInDb.GenreId = movie.GenreId;
                 movieInDb.NumberInStock = movie.NumberInStock;
-                movieInDb.ReleaseDate = movie.ReleaseDate;
             }
 
             _context.SaveChanges();
 
             return RedirectToAction("Index", "Movies");
+        }
+
+        //movies
+        public ActionResult Index()
+        {
+            var movies = _context.Movies.Include(m => m.Genre).ToList();
+
+
+            return View(movies);
+        }
+
+        [Route("movies/details/{id}")]
+        public ActionResult Details(int id)
+        {
+            var customer = _context.Movies.Include(m => m.Genre).SingleOrDefault(c => c.Id == id);
+            if (customer == null)
+                return HttpNotFound();
+
+            return View(customer);
         }
     }
 }
